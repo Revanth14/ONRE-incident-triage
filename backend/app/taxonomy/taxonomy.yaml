@@ -1,0 +1,250 @@
+# ONRE Incident Taxonomy v1
+# 7 top-level classes. Each class has subtypes, signal keywords,
+# diagnostic layers, blast radius profile, and change sensitivity.
+# This file is the ground truth for the classifier prompt,
+# the retrieval metadata filters, and the evaluation rubric.
+
+taxonomy:
+
+  wan_upstream:
+    label: "WAN / Upstream"
+    description: >
+      Failures in the wide-area network or upstream internet connectivity.
+      Typically affects multiple sites simultaneously. Often carrier-side
+      or edge router issues.
+    subtypes:
+      - circuit_down
+      - circuit_degraded
+      - bgp_session_drop
+      - routing_loop
+      - upstream_provider_fault
+      - mpls_path_failure
+    signal_keywords:
+      - "unable to access internal systems"
+      - "internet down"
+      - "multiple sites affected"
+      - "latency spike across all offices"
+      - "packet loss to all destinations"
+      - "traceroute fails at edge"
+      - "BGP neighbor down"
+      - "upstream unreachable"
+    correlated_layers: ["L3", "L1_circuit", "carrier"]
+    typical_blast_radius: "multi_site"
+    change_sensitivity: high
+    omc_self_resolve: false
+    typical_tier3_reason: "requires carrier coordination or BGP config change"
+
+  wireless:
+    label: "Wireless Infrastructure"
+    description: >
+      Failures in WiFi infrastructure including APs, wireless controllers,
+      SSIDs, and RF environment. Usually site-specific unless controller
+      is centralised and shared across sites.
+    subtypes:
+      - ap_down
+      - ap_rebooting
+      - wireless_controller_unreachable
+      - ssid_missing
+      - roaming_failure
+      - rf_interference
+      - channel_congestion
+      - dhcp_scope_exhausted
+    signal_keywords:
+      - "wifi not working"
+      - "wireless down"
+      - "cannot connect to wifi"
+      - "drops every few minutes"
+      - "multiple access points"
+      - "SSID not visible"
+      - "wired users fine, wireless affected"
+      - "roaming issue"
+      - "AP offline"
+    correlated_layers: ["L1_rf", "L2", "DHCP"]
+    typical_blast_radius: "single_site"
+    change_sensitivity: medium
+    omc_self_resolve: true
+    typical_tier3_reason: "wireless controller config or firmware issue"
+
+  auth_802_1x:
+    label: "Authentication / 802.1X / RADIUS"
+    description: >
+      Authentication failures preventing users from accessing the network.
+      RADIUS, ISE policy failures, certificate issues, 802.1X negotiation
+      problems. Often multi-site because RADIUS infrastructure is centralised.
+    subtypes:
+      - radius_timeout
+      - radius_server_down
+      - ise_policy_failure
+      - certificate_expired
+      - dot1x_negotiation_failure
+      - machine_auth_failure
+      - guest_portal_unreachable
+    signal_keywords:
+      - "cannot authenticate"
+      - "802.1X"
+      - "RADIUS"
+      - "keeps disconnecting and reconnecting"
+      - "authentication failed"
+      - "ISE"
+      - "certificate error"
+      - "bouncing between connected and disconnected"
+      - "cannot get IP address"
+      - "guest wifi down"
+    correlated_layers: ["L2", "AAA", "PKI"]
+    typical_blast_radius: "multi_site"
+    change_sensitivity: high
+    omc_self_resolve: false
+    typical_tier3_reason: "ISE policy change or certificate expiry — requires ISE admin access"
+
+  routing_switching:
+    label: "Routing / Switching"
+    description: >
+      Layer 2 and Layer 3 failures within the campus or office network.
+      STP topology changes, VLAN mismatches, OSPF adjacency drops,
+      inter-VLAN routing failures.
+    subtypes:
+      - stp_topology_change
+      - spanning_tree_loop
+      - vlan_missing
+      - inter_vlan_routing_broken
+      - ospf_adjacency_drop
+      - bgp_route_missing
+      - arp_table_issue
+      - port_channel_failure
+    signal_keywords:
+      - "some users can reach some servers but not others"
+      - "intermittent connectivity"
+      - "specific VLAN down"
+      - "half the floor affected"
+      - "routing table"
+      - "OSPF"
+      - "spanning tree"
+      - "trunk port"
+      - "broadcast storm"
+      - "network loop"
+    correlated_layers: ["L2", "L3"]
+    typical_blast_radius: "single_site"
+    change_sensitivity: high
+    omc_self_resolve: true
+    typical_tier3_reason: "spanning tree misconfiguration or complex routing issue"
+
+  circuit_carrier:
+    label: "Circuit / Carrier Degradation"
+    description: >
+      Physical or provider-side circuit issues that are not full outages.
+      Intermittent packet loss, jitter, CRC errors, provider maintenance.
+      Distinct from WAN because the IP layer may still be up.
+    subtypes:
+      - crc_errors
+      - interface_flapping
+      - carrier_maintenance
+      - fiber_degradation
+      - latency_jitter
+      - packet_loss_intermittent
+      - last_mile_issue
+    signal_keywords:
+      - "intermittent packet loss"
+      - "high latency"
+      - "jitter"
+      - "video calls degraded"
+      - "interface errors"
+      - "CRC errors"
+      - "circuit flapping"
+      - "carrier maintenance"
+      - "performance degraded but not down"
+    correlated_layers: ["L1_circuit", "L2"]
+    typical_blast_radius: "single_site"
+    change_sensitivity: low
+    omc_self_resolve: false
+    typical_tier3_reason: "requires carrier ticket and coordination"
+
+  change_induced_config_drift:
+    label: "Change-Induced / Config Drift"
+    description: >
+      Failures caused by a recent configuration change or gradual config
+      drift from the golden standard. Often presents as intermittent or
+      partial failures. Change-induced is acute (happened right after a
+      change). Config drift is chronic (has been degrading over time).
+    subtypes:
+      - acl_misconfiguration
+      - qos_policy_missing
+      - ntp_drift
+      - snmp_community_mismatch
+      - interface_config_mismatch
+      - routing_policy_error
+      - firmware_regression
+      - rollback_required
+    signal_keywords:
+      - "worked yesterday"
+      - "started after maintenance"
+      - "started after change window"
+      - "only some users affected"
+      - "no hardware issue"
+      - "config was changed"
+      - "rollback"
+      - "nothing changed but it stopped working"
+    correlated_layers: ["L2", "L3", "management"]
+    typical_blast_radius: "variable"
+    change_sensitivity: very_high
+    omc_self_resolve: true
+    typical_tier3_reason: "requires config comparison and rollback authority"
+
+  insufficient_information:
+    label: "Insufficient Information"
+    description: >
+      The incident description does not contain enough signal to classify
+      reliably. The system will return missing facts required before
+      classification can proceed. Do not guess when confidence is low.
+    subtypes:
+      - vague_description
+      - single_user_report
+      - no_scope_defined
+      - conflicting_signals
+    signal_keywords:
+      - "network is slow"
+      - "something is wrong"
+      - "internet not working"
+      - "cannot connect"
+    correlated_layers: []
+    typical_blast_radius: "unknown"
+    change_sensitivity: unknown
+    omc_self_resolve: unknown
+    typical_tier3_reason: "cannot determine without more information"
+
+# OMC gap type labels
+# Captured on every closed incident to track why OMC could not self-resolve.
+# This is the capability-building signal Madhav's team needs most.
+
+omc_gap_types:
+  - missing_runbook
+  - missing_telemetry
+  - missing_permissions
+  - insufficient_training
+  - cross_team_dependency
+  - poor_incident_data_quality
+  - tool_limitation
+  - known_bug_no_workaround
+
+# Blast radius estimation rules (deterministic, not LLM)
+blast_radius_rules:
+  single_site:
+    users_per_site_avg: 150
+    sites_affected: 1
+  multi_site:
+    users_per_site_avg: 150
+    sites_affected: "from incident metadata"
+  unknown:
+    users_per_site_avg: 150
+    sites_affected: 1  # conservative default
+
+# Escalation thresholds (deterministic rules)
+escalation_rules:
+  confidence_below_60: "ask_for_more_information"
+  confidence_60_to_84: "omc_attempt_with_monitoring"
+  confidence_above_85: "follow_diagnostic_path"
+  sev1_conditions:
+    - sites_affected >= 5
+    - users_affected >= 500
+    - incident_class == "wan_upstream" and sites_affected >= 3
+    - incident_class == "auth_802_1x" and sites_affected >= 3
+  sev1_action: "escalate_to_tier3_immediately"
